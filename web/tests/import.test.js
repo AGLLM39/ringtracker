@@ -61,4 +61,18 @@ ok("Gruppierte Tageswerte ohne Uhrzeit", () => {
   const a = RT.aggregate(p);
   assert.strictEqual(a.days["2026-11-25"].steps, 12004);
 });
+ok("Schlaf ohne Doppelzählung", () => {
+  const d = (h, m) => new Date(2026, 10, h < 12 ? 26 : 25, h, m);
+  const phases = [[23, 52, 1, 30, "core"], [1, 30, 2, 40, "deep"], [2, 40, 3, 0, "awake"], [3, 0, 5, 0, "core"], [5, 0, 6, 44, "rem"]]
+    .map(([h1, m1, h2, m2, stage]) => ({ start: d(h1, m1), end: d(h2, m2), stage }));
+  // Jede Phase doppelt (zweimal synchronisiert) plus „Schlafend“ über die ganze Nacht
+  const sleep = [...phases, ...phases.map(x => ({ ...x })), { start: d(23, 52), end: d(6, 44), stage: "unspecified" }];
+  const n = RT.aggregate({ metrics: {}, sleep }).nights["2026-11-26"];
+  const asleep = (n.deep + n.core + n.rem + n.unspecified) / 3600;
+  assert.ok(Math.abs(asleep - (6 + 52 / 60 - 20 / 60)) < 1e-6, asleep);
+  assert.strictEqual(n.awake, 20 * 60);
+  assert.strictEqual(n.unspecified, 0);
+  assert.strictEqual(new Date(n.start).getHours(), 23);
+  assert.strictEqual(new Date(n.end).getMinutes(), 44);
+});
 console.log(`${n} Tests bestanden`);
