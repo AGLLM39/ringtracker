@@ -1,0 +1,51 @@
+name: iPhone-App (.ipa)
+
+# Baut eine unsignierte .ipa für Sideloadly/AltStore.
+# Die Signatur macht später Sideloadly mit der eigenen Apple-ID.
+on:
+  push:
+    branches: [main]
+    paths: ["RingTracker/**", "RingTracker.xcodeproj/**", "RingTracker.entitlements", ".github/workflows/ipa.yml"]
+  pull_request:
+    paths: ["RingTracker/**", "RingTracker.xcodeproj/**", "RingTracker.entitlements", ".github/workflows/ipa.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ipa:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Für iPhone bauen (ohne Signatur)
+        run: |
+          xcodebuild build \
+            -project RingTracker.xcodeproj \
+            -target RingTracker \
+            -sdk iphoneos \
+            -configuration Release \
+            CODE_SIGNING_ALLOWED=NO \
+            SYMROOT="$PWD/build"
+      - name: HealthKit-Berechtigung eintragen und .ipa packen
+        run: |
+          APP=build/Release-iphoneos/RingTracker.app
+          codesign --force --sign - --entitlements RingTracker.entitlements "$APP"
+          codesign -d --entitlements :- "$APP" | grep -q healthkit
+          mkdir -p Payload && cp -R "$APP" Payload/
+          zip -qry RingTracker.ipa Payload
+          ls -lh RingTracker.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RingTracker-ipa
+          path: RingTracker.ipa
+      - name: Als Download veröffentlichen
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete app --yes --cleanup-tag 2>/dev/null || true
+          gh release create app RingTracker.ipa \
+            --title "RingTracker für iPhone" \
+            --notes "Mit Sideloadly installieren. Anleitung: siehe INSTALL.md im Repository." \
+            --target "$GITHUB_SHA"
