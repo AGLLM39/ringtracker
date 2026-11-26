@@ -640,6 +640,7 @@
       <b style="color:var(--ok)">✓ ${nd} Tage und ${nn} Nächte übernommen.</b>
       <div class="muted" style="margin-top:4px">${parsed.sections.filter(s => s.count).map(s => `${names[s.name]} ${s.count}`).join(" · ")}</div>
       ${missing.length ? `<div style="margin-top:4px;color:var(--warn-ink)">Nicht enthalten: ${missing.map(k => names[k]).join(", ")}</div>` : ""}
+      ${missing.includes("hrv") ? `<div class="muted" style="margin-top:4px">HRV: Die RingConn-App überträgt HRV nicht an Apple Health. Den Wert siehst du nur in der RingConn-App.</div>` : ""}
       ${parsed.warnings.length ? `<div class="muted" style="margin-top:4px">${parsed.warnings.map(esc).join("<br>")}</div>` : ""}
     </div>`;
     toast(`${nn} Nächte, ${nd} Tage übernommen`);
