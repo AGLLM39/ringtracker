@@ -321,10 +321,9 @@
     </div></div>
     <div class="card">
       ${cardHead("So kommen die Daten hierher", "shortcut", "var(--accent)")}
-      <p class="small muted" style="margin:0 0 12px">Ein Kurzbefehl holt die Werte deines Rings aus Apple Health und legt sie in die Zwischenablage. Hier tippst du dann auf „Einfügen“.</p>
+      <p class="small muted" style="margin:0 0 12px">Die RingConn-App schreibt deine Werte in Apple Health. Von dort exportierst du sie mit zwei Tipps und lädst die Datei hier hoch. Keine Einrichtung nötig.</p>
       <div class="btnrow">
-        <button class="primary" data-go="import">Daten einfügen</button>
-        <button class="secondary" data-go="anleitung">Kurzbefehl einrichten</button>
+        <button class="primary" data-go="import">Health-Export hochladen</button>
         <button class="secondary" data-action="demo">Erst mit Beispieldaten ansehen</button>
       </div>
     </div>`;
@@ -337,7 +336,7 @@
     const stale = data && Date.now() - new Date(data.updated) > 18 * 3600e3;
     let h = "";
     if (data && data.demo) h += `<div class="card banner">${svg("info", "var(--blue)")}<div class="small"><b>Beispieldaten</b><br><span class="muted">So sieht RingTracker mit echten Werten aus.</span> <a href="#import">Echte Daten einfügen</a></div></div>`;
-    else if (stale) h += `<button class="card link banner" data-go="import">${svg("sync", "var(--warn)")}<div class="small"><b>Daten von ${relTime(data.updated)}</b><br><span class="muted">Kurzbefehl ausführen und hier tippen, um neue Werte einzufügen.</span></div></button>`;
+    else if (stale) h += `<button class="card link banner" data-go="import">${svg("sync", "var(--warn)")}<div class="small"><b>Daten von ${relTime(data.updated)}</b><br><span class="muted">Tippen, um einen neuen Health-Export hochzuladen.</span></div></button>`;
 
     h += `<div class="card hero">
       <div class="herotop">
@@ -552,8 +551,7 @@
       <div class="stat"><span>Tage mit Werten</span><b>${nDays}</b></div>
       <div class="stat"><span>Nächte</span><b>${nNights}</b></div>
       <div class="btnrow">
-        <button class="primary" data-go="import">Neue Daten einfügen</button>
-        <button class="secondary" data-go="anleitung">Kurzbefehl einrichten</button>
+        <button class="primary" data-go="import">Neue Daten hochladen</button>
         ${data ? `<button class="secondary danger" data-action="wipe">Alle Daten löschen</button>` : ""}
       </div>
     </div>
@@ -569,14 +567,28 @@
 
   views.import = () => `
     <div class="card hero">
-      ${cardHead("Daten einfügen", "sync", "var(--accent)")}
-      <p class="small muted" style="margin:0 0 12px">Führe zuerst den Kurzbefehl „RingTracker“ aus. Er kopiert die Werte aus Apple Health. Dann hier tippen:</p>
-      <button class="primary" data-action="paste">Aus Zwischenablage einfügen</button>
+      ${cardHead("Health-Export hochladen", "sync", "var(--accent)")}
+      <ol class="steps">
+        <li><span>App <b>Health</b> öffnen, oben rechts auf dein <b>Profilbild</b> tippen.</span></li>
+        <li><span>Ganz unten <b>Alle Gesundheitsdaten exportieren</b> → <b>Exportieren</b>. Das dauert 1 bis 2 Minuten.</span></li>
+        <li><span>Im Teilen-Menü <b>In Dateien sichern</b> wählen.</span></li>
+        <li><span>Hier die Datei <b>Export.zip</b> auswählen:</span></li>
+      </ol>
+      <label class="primary" style="margin-top:14px;cursor:pointer;position:relative" id="fileLabel">Export-Datei wählen
+        <input type="file" id="fileInput" accept=".zip,.xml,application/zip,application/xml,text/xml" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"></label>
+      <div id="progress" hidden style="margin-top:14px">
+        <div class="meter"><i id="progressBar" style="width:0%;background-color:var(--accent);animation:none"></i></div>
+        <div class="tiny muted" id="progressText" style="margin-top:6px">Lese Datei …</div>
+      </div>
       <div id="importResult"></div>
     </div>
+    <div class="card">${cardHead("Gut zu wissen", "info", "var(--blue)")}
+      <div class="small muted">Die Datei bleibt auf deinem iPhone und wird nur hier im Browser gelesen. RingTracker übernimmt die Werte der letzten 120 Tage und bevorzugt dabei die Messungen von RingConn. Öffne vor dem Export kurz die RingConn-App, damit die neuesten Werte in Health sind.</div>
+    </div>
     <div class="card">
-      <details class="fold"><summary>${svg("list", "var(--muted)")}Text von Hand einfügen</summary>
-        <textarea id="importText" placeholder="RINGTRACKER&#10;## Schritte&#10;…" autocapitalize="off" autocomplete="off" spellcheck="false"></textarea>
+      <details class="fold"><summary>${svg("list", "var(--muted)")}Text vom Kurzbefehl einfügen</summary>
+        <div class="btnrow" style="margin-top:0"><button class="secondary" data-action="paste">Aus Zwischenablage einfügen</button></div>
+        <textarea id="importText" style="margin-top:10px" placeholder="RINGTRACKER&#10;## Schritte&#10;…" autocapitalize="off" autocomplete="off" spellcheck="false"></textarea>
         <div class="btnrow"><button class="secondary" data-action="importText">Übernehmen</button></div>
       </details>
     </div>
@@ -589,7 +601,7 @@
       sec("Ruhepuls", "Ruhepuls"), sec("HRV", "HRV"), sec("Blutsauerstoff", "Blutsauerstoff"), sec("Atemfrequenz", "Atemfrequenz"),
       sec("Schlaf", "Schlaf", "\n==\n[Schlaf · Enddatum · ISO 8601]")].join("\n");
     return `<div class="card" id="anleitung">
-      <details class="fold"${open ? " open" : ""}><summary>${svg("shortcut", "var(--accent)")}Kurzbefehl einrichten (einmalig, ca. 10 min)</summary>
+      <details class="fold"${open ? " open" : ""}><summary>${svg("shortcut", "var(--accent)")}Für Fortgeschrittene: Kurzbefehl</summary>
       <ol class="steps">
         <li><span>In der <b>RingConn-App</b>: Profil → Apple Health → alle Kategorien einschalten. Die RingConn-App überträgt neue Werte, sobald du sie öffnest.</span></li>
         <li><span>App <b>Kurzbefehle</b> öffnen → <b>+</b> → oben den Namen <b>RingTracker</b> eintragen.</span></li>
@@ -608,8 +620,8 @@
   }
 
   // ---------- Import ----------
-  function doImport(text) {
-    const parsed = RTImport.parse(text);
+  function doImport(input) {
+    const parsed = typeof input === "string" ? RTImport.parse(input) : input;
     const box = $("#importResult");
     const total = parsed.sections.reduce((a, s) => a + s.count, 0);
     if (!total) {
@@ -631,6 +643,7 @@
       ${parsed.warnings.length ? `<div class="muted" style="margin-top:4px">${parsed.warnings.map(esc).join("<br>")}</div>` : ""}
     </div>`;
     toast(`${nn} Nächte, ${nd} Tage übernommen`);
+    if (navigator.vibrate) navigator.vibrate(10);
     setTimeout(() => { if (location.hash === "#import") go("heute"); }, missing.length || parsed.warnings.length ? 3500 : 1400);
     return true;
   }
@@ -647,7 +660,7 @@
   }
 
   // ---------- Navigation ----------
-  const TITLES = { heute: null, woche: "Woche", profil: "Profil", schlaf: "Schlaf", import: "Daten einfügen", welcome: null };
+  const TITLES = { heute: null, woche: "Woche", profil: "Profil", schlaf: "Schlaf", import: "Daten laden", welcome: null };
   let current_ = "heute";
 
   function go(route) { location.hash = route; }
@@ -713,7 +726,32 @@
     setTimeout(() => { delete btn.dataset.armed; btn.textContent = "Alle Daten löschen"; }, 4000);
     return false;
   }
+  async function importExportFile(file) {
+    if (!file) return;
+    const prog = $("#progress"), bar = $("#progressBar"), txt = $("#progressText"), label = $("#fileLabel");
+    prog.hidden = false; label.style.opacity = ".5"; label.style.pointerEvents = "none";
+    $("#importResult").innerHTML = "";
+    const t0 = Date.now();
+    try {
+      const parsed = await RTExport.importFile(file, {
+        days: 120,
+        onProgress: (p, kept) => { bar.style.width = (p * 100).toFixed(1) + "%"; txt.textContent = `Lese Daten … ${Math.round(p * 100)} % · ${nf(kept)} Werte gefunden`; },
+      });
+      txt.textContent = `Fertig in ${Math.max(1, Math.round((Date.now() - t0) / 1000))} s`;
+      const ring = Object.values(parsed.sources || {}).some(s => /ringconn/i.test(s));
+      if (!ring && parsed.sections.length) parsed.warnings.push("Keine RingConn-Werte gefunden, es werden andere Quellen (z. B. iPhone) genutzt.");
+      doImport(parsed);
+    } catch (err) {
+      txt.textContent = "";
+      $("#importResult").innerHTML = `<div class="small" style="margin-top:12px;color:var(--over)">${esc(err.message || String(err))}</div>`;
+    } finally {
+      label.style.opacity = ""; label.style.pointerEvents = "";
+      const fi = $("#fileInput"); if (fi) fi.value = "";
+    }
+  }
+
   document.addEventListener("change", e => {
+    if (e.target.id === "fileInput") { importExportFile(e.target.files[0]); return; }
     if (e.target.id === "themeSel") { settings.theme = e.target.value; save(SET_KEY, settings); applyTheme(); }
   });
   window.addEventListener("hashchange", render);

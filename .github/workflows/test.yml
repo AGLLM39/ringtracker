@@ -13,3 +13,4 @@ jobs:
         with:
           node-version: 22
       - run: node web/tests/import.test.js
+      - run: node web/tests/export.test.js 20
