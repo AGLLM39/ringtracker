@@ -27,7 +27,7 @@ jobs:
         with:
           node-version: 22
       - name: Import-Tests
-        run: node web/tests/import.test.js
+        run: node web/tests/import.test.js && node web/tests/export.test.js 20
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

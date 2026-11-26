@@ -1,7 +1,7 @@
 /* RingTracker – Service Worker: macht die App offline nutzbar.
    Die Seite selbst kommt zuerst aus dem Netz (Updates kommen sofort an), sonst aus dem Cache. */
-const CACHE = "ringtracker-v1";
-const FILES = ["./", "index.html", "rt.css", "rt-import.js", "rt-beispiel.js", "rt-app.js", "manifest.webmanifest",
+const CACHE = "ringtracker-v2";
+const FILES = ["./", "index.html", "rt.css", "rt-import.js", "rt-export.js", "rt-beispiel.js", "rt-app.js", "manifest.webmanifest",
                "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"];
 
 self.addEventListener("install", ev => {
