@@ -1,6 +1,15 @@
 # RingTracker
 
-iPhone-App für die Daten des RingConn Gen 2. Gestaltung nach dem Vorbild von NährWert
+**Web-App:** https://agllm39.github.io/ringtracker/ (Ordner `web/`, wird bei jedem Push auf `main`
+automatisch über GitHub Pages veröffentlicht, wie NährWert).
+
+Die Web-App bekommt die Werte über einen iOS-Kurzbefehl, der sie aus Apple Health holt und in die
+Zwischenablage kopiert. Die Anleitung steht in der App unter Profil → Kurzbefehl einrichten.
+Tests für den Import: `node web/tests/import.test.js`.
+
+## Native App (optional)
+
+Im Ordner `RingTracker/` liegt zusätzlich eine native iPhone-App, die Apple Health direkt liest. Gestaltung nach dem Vorbild von NährWert
 (Leinen-Hintergrund, Blattgrün, weiche Karten, Ringe).
 
 RingConn bietet keine offene Schnittstelle. Die RingConn-App überträgt ihre Messungen an
