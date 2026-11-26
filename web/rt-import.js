@@ -186,27 +186,32 @@
       intraday[name] = sorted.filter(p => p.t.getTime() >= cutoff).map(p => [p.t.toISOString(), p.v]);
     }
 
-    const nights = {};
+    // Schlaf: Proben pro Nacht sammeln, dann überlappungsfrei auswerten.
+    // Apple Health enthält oft doppelte oder überlappende Proben (z. B. mehrfach synchronisiert,
+    // oder „Schlafend“ über die ganze Nacht plus einzelne Phasen). Jede Minute zählt nur einmal,
+    // und zwar für die genaueste Phase: Tief > REM > Kern > Wach > Schlafend (unbestimmt).
+    const PRIO = { deep: 5, rem: 4, core: 3, awake: 2, unspecified: 1 };
+    const groups = {};
     for (const s of parsed.sleep) {
-      const k = nightKey(s.end);
-      const n = nights[k] || (nights[k] = { deep: 0, core: 0, rem: 0, unspecified: 0, awake: 0, start: null, end: null });
-      n[s.stage] += (s.end - s.start) / 1000;
-      if (s.stage !== "awake") {
-        if (!n.start || s.start < new Date(n.start)) n.start = s.start.toISOString();
-        if (!n.end || s.end > new Date(n.end)) n.end = s.end.toISOString();
-      }
+      if (!(s.end > s.start) || !PRIO[s.stage]) continue;
+      (groups[nightKey(s.end)] || (groups[nightKey(s.end)] = [])).push(s);
     }
-    // Überlappungen (z. B. „Schlafend“ und Phasen gleichzeitig) nicht doppelt zählen
-    for (const n of Object.values(nights)) {
-      const staged = n.deep + n.core + n.rem;
-      if (staged > 0 && n.unspecified > 0 && n.start && n.end) {
-        const span = (new Date(n.end) - new Date(n.start)) / 1000;
-        if (staged + n.unspecified > span * 1.05) n.unspecified = 0;
+    const nights = {};
+    for (const [k, list] of Object.entries(groups)) {
+      const n = { deep: 0, core: 0, rem: 0, unspecified: 0, awake: 0, start: null, end: null };
+      const cuts = [...new Set(list.flatMap(s => [+s.start, +s.end]))].sort((x, y) => x - y);
+      for (let i = 0; i + 1 < cuts.length; i++) {
+        const a = cuts[i], b = cuts[i + 1];
+        let best = null;
+        for (const s of list) if (+s.start <= a && +s.end >= b && (!best || PRIO[s.stage] > PRIO[best])) best = s.stage;
+        if (!best) continue;
+        n[best] += (b - a) / 1000;
+        if (best !== "awake") {
+          if (!n.start || a < +new Date(n.start)) n.start = new Date(a).toISOString();
+          if (!n.end || b > +new Date(n.end)) n.end = new Date(b).toISOString();
+        }
       }
-    }
-    for (const k of Object.keys(nights)) {
-      const n = nights[k];
-      if (n.deep + n.core + n.rem + n.unspecified <= 0) delete nights[k];
+      if (n.deep + n.core + n.rem + n.unspecified > 0) nights[k] = n;
     }
     return { days, latest, intraday, nights };
   }
